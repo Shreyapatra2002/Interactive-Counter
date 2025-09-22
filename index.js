@@ -17,6 +17,8 @@ let step = 1;
 let vibrationEnabled = true;
 let history = [];
 let backgroundShapes = [];
+let touchStartY = 0;
+let isScrolling = false;
 
 // Initialize
 updateCounterDisplay();
@@ -59,6 +61,32 @@ document.addEventListener('touchmove', (e) => {
     moveBackgroundOnTouchMove(e);
 });
 
+// Improved touch swipe support for mobile
+document.addEventListener('touchstart', e => {
+    touchStartY = e.changedTouches[0].screenY;
+    isScrolling = false;
+});
+
+document.addEventListener('touchmove', e => {
+    isScrolling = true;
+});
+
+document.addEventListener('touchend', e => {
+    if (!isScrolling) {
+        const touchEndY = e.changedTouches[0].screenY;
+        const diffY = touchEndY - touchStartY;
+        
+        if (Math.abs(diffY) > 50) {
+            if (diffY > 0) {
+                changeCount(-step);
+            } else {
+                changeCount(step);
+            }
+            e.preventDefault();
+        }
+    }
+});
+
 // Functions
 function changeCount(value) {
     count += value;
@@ -91,7 +119,6 @@ function resetCount() {
 function updateCounterDisplay() {
     counterProgram.textContent = count;
     
-    // Change color based on value
     if (count > 0) {
         counterProgram.className = "counter-positive";
     } else if (count < 0) {
@@ -102,20 +129,17 @@ function updateCounterDisplay() {
 }
 
 function animateCounter(value) {
-    // GSAP animation for counter change
     gsap.fromTo(counterProgram, 
         { scale: 1.2, rotation: value > 0 ? -10 : 10 },
         { scale: 1, rotation: 0, duration: 0.3, ease: "back.out(1.7)" }
     );
     
-    // Animate button press
     const button = value > 0 ? increaseBtn : decreaseBtn;
     gsap.fromTo(button,
         { scale: 0.95 },
         { scale: 1, duration: 0.2 }
     );
     
-    // Create floating text animation
     if (Math.abs(value) > 1) {
         const floatingText = document.createElement("div");
         floatingText.textContent = (value > 0 ? "+" : "") + value;
@@ -136,20 +160,17 @@ function animateCounter(value) {
         });
     }
     
-    // Create confetti for large numbers or milestones
     if (count !== 0 && count % 10 === 0) {
         createConfetti();
     }
 }
 
 function animateReset() {
-    // GSAP animation for reset
     gsap.fromTo(counterProgram,
         { scale: 0.5, rotation: 360 },
         { scale: 1, rotation: 0, duration: 0.5, ease: "elastic.out(1, 0.3)" }
     );
     
-    // Animate reset button
     gsap.fromTo(resetBtn,
         { scale: 0.9, backgroundColor: "#fff" },
         { scale: 1, backgroundColor: "inherit", duration: 0.3 }
@@ -207,7 +228,6 @@ function addToHistory(action) {
         value: count
     });
     
-    // Keep only last 10 history items
     if (history.length > 10) {
         history.pop();
     }
@@ -240,7 +260,6 @@ function createConfetti() {
         confetti.style.top = '-10px';
         document.body.appendChild(confetti);
         
-        // Animate with GSAP
         gsap.to(confetti, {
             y: window.innerHeight + 10,
             x: "+=random(-100,100)",
@@ -254,26 +273,26 @@ function createConfetti() {
 }
 
 function createBackgroundShapes() {
-    // Create various shapes for the background
     const shapes = ['circle', 'triangle', 'square'];
     const colors = ['#ff9a9e', '#fad0c4', '#a1c4fd', '#c2e9fb', '#ffecd2', '#fcb69f'];
     
-    for (let i = 0; i < 15; i++) {
+    const isMobile = window.innerWidth <= 600;
+    const shapeCount = isMobile ? 8 : 15;
+    
+    for (let i = 0; i < shapeCount; i++) {
         const shape = document.createElement('div');
         const shapeType = shapes[Math.floor(Math.random() * shapes.length)];
         
         shape.classList.add('shape');
         shape.classList.add(shapeType);
         
-        // Random position
         const left = Math.random() * 100;
         const top = Math.random() * 100;
         
         shape.style.left = `${left}%`;
         shape.style.top = `${top}%`;
         
-        // Random size
-        const size = 30 + Math.random() * 70;
+        const size = isMobile ? (20 + Math.random() * 40) : (30 + Math.random() * 70);
         if (shapeType === 'circle') {
             shape.style.width = `${size}px`;
             shape.style.height = `${size}px`;
@@ -287,14 +306,12 @@ function createBackgroundShapes() {
             shape.style.borderBottomColor = colors[Math.floor(Math.random() * colors.length)];
         }
         
-        // Random color for circles and squares
         if (shapeType !== 'triangle') {
             const color1 = colors[Math.floor(Math.random() * colors.length)];
             const color2 = colors[Math.floor(Math.random() * colors.length)];
             shape.style.background = `linear-gradient(45deg, ${color1}, ${color2})`;
         }
         
-        // Random opacity
         shape.style.opacity = 0.2 + Math.random() * 0.3;
         
         background.appendChild(shape);
@@ -303,7 +320,6 @@ function createBackgroundShapes() {
 }
 
 function animateBackground() {
-    // Animate background shapes with GSAP
     backgroundShapes.forEach((shape, index) => {
         const duration = 15 + Math.random() * 15;
         const delay = Math.random() * 5;
@@ -322,7 +338,6 @@ function animateBackground() {
 }
 
 function animateBackgroundOnChange(value) {
-    // Animate background on counter change
     backgroundShapes.forEach((shape, index) => {
         const direction = value > 0 ? 1 : -1;
         
@@ -339,7 +354,6 @@ function animateBackgroundOnChange(value) {
 }
 
 function animateBackgroundOnReset() {
-    // Special animation for reset
     backgroundShapes.forEach((shape, index) => {
         gsap.to(shape, {
             rotation: "+=360",
@@ -350,7 +364,6 @@ function animateBackgroundOnReset() {
 }
 
 function moveBackgroundOnMouseMove(e) {
-    // Move background shapes based on mouse position
     const moveX = (e.clientX - window.innerWidth / 2) / 30;
     const moveY = (e.clientY - window.innerHeight / 2) / 30;
     
@@ -365,7 +378,6 @@ function moveBackgroundOnMouseMove(e) {
 }
 
 function moveBackgroundOnTouchMove(e) {
-    // Move background shapes based on touch position
     const touch = e.touches[0];
     const moveX = (touch.clientX - window.innerWidth / 2) / 30;
     const moveY = (touch.clientY - window.innerHeight / 2) / 30;
@@ -404,22 +416,3 @@ function loadFromLocalStorage() {
         vibrationToggle.checked = vibrationEnabled;
     }
 }
-
-// Add touch swipe support for mobile
-let touchStartY = 0;
-document.addEventListener('touchstart', e => {
-    touchStartY = e.changedTouches[0].screenY;
-});
-
-document.addEventListener('touchend', e => {
-    const touchEndY = e.changedTouches[0].screenY;
-    const diffY = touchEndY - touchStartY;
-    
-    if (Math.abs(diffY) > 50) { // Minimum swipe distance
-        if (diffY > 0) {
-            changeCount(-step); // Swipe down
-        } else {
-            changeCount(step); // Swipe up
-        }
-    }
-});
